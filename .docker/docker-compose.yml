@@ -59,6 +59,7 @@ services:
     ports:
       - "${MYSQL_PORT}:3306"
     volumes:
+      - ./mysql/conf/my.cnf:/etc/mysql/conf.d/my.cnf
       - db_data:/var/lib/mysql:rw
     depends_on:
       - app
