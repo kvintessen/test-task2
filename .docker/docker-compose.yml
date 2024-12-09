@@ -1,0 +1,73 @@
+services:
+  app:
+    user: ${PUID}:${PGID}
+    build:
+      context: ./app
+      args:
+        - PUID=${PUID}
+        - PGID=${PGID}
+        - INSTALL_XDEBUG=${INSTALL_XDEBUG}
+        - VERSION=${PHP_VERSION}
+    image: ${PREFIX}-app
+    container_name: ${PREFIX}-app
+    working_dir: /var/www
+    environment:
+      PHP_IDE_CONFIG: "serverName=Docker"
+    volumes:
+      - ../:/var/www:delegated
+      - ./app/php${PHP_VERSION}.ini:/usr/local/etc/php/php.ini:delegated
+      - ./app/xdebug.ini:/usr/local/etc/php/conf.d/xdebug.ini:delegated
+    expose:
+      - "9000"
+    ports:
+      - "8080:8080"
+    networks:
+      - app-network
+
+  nginx:
+    build:
+      context: ./nginx
+      args:
+        - PREFIX=${PREFIX}
+        - PHP_UPSTREAM_CONTAINER=${PHP_UPSTREAM_CONTAINER}
+        - PHP_UPSTREAM_PORT=${PHP_UPSTREAM_PORT}
+    image: ${PREFIX}-nginx
+    container_name: ${PREFIX}-nginx
+    working_dir: /var/www
+    ports:
+      - ${NGINX_HOST_HTTP_PORT}:80
+    volumes:
+      - ../:/var/www:delegated
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:delegated
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:delegated
+    depends_on:
+      - app
+    networks:
+      - app-network
+  db:
+    image: ${PREFIX}-mysql
+    container_name: ${PREFIX}-mysql
+    build:
+      context: ./mysql
+      args:
+        - VERSION=${MYSQL_VERSION}
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    ports:
+      - "${MYSQL_PORT}:3306"
+    volumes:
+      - db_data:/var/lib/mysql:rw
+    depends_on:
+      - app
+    networks:
+      - app-network
+
+volumes:
+  db_data:
+
+networks:
+  app-network:
+    driver: bridge
